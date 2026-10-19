@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.core.logging import get_logger
+from app.services.storage import StorageError, TransientStorageError
 
 log = get_logger(__name__)
 
@@ -116,6 +117,21 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def _http(_: Request, exc: StarletteHTTPException) -> JSONResponse:
         code = _STATUS_CODES.get(exc.status_code, "http_error")
         return error_response(exc.status_code, code, str(exc.detail))
+
+    @app.exception_handler(TransientStorageError)
+    async def _storage_down(_: Request, exc: TransientStorageError) -> JSONResponse:
+        log.warning("storage unavailable: %s", exc)
+        return error_response(
+            503,
+            "storage_unavailable",
+            "Storage is temporarily unavailable.",
+            headers={"Retry-After": "5"},
+        )
+
+    @app.exception_handler(StorageError)
+    async def _storage_error(_: Request, exc: StorageError) -> JSONResponse:
+        log.error("storage error: %s", exc)
+        return error_response(502, "storage_error", "Storage request failed.")
 
     @app.exception_handler(Exception)
     async def _unhandled(_: Request, exc: Exception) -> JSONResponse:
