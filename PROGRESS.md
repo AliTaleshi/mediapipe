@@ -7,7 +7,7 @@ Spec: see the project brief. Work milestone by milestone; commit after each.
 - [x] 2. Auth
 - [x] 3. Uploads
 - [x] 4. Image processing
-- [ ] 5. Documents
+- [x] 5. Documents
 - [ ] 6. Video
 - [ ] 7. Progress & webhooks
 - [ ] 8. Downloads & maintenance

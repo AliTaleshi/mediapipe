@@ -22,6 +22,7 @@ from app.db.base import utcnow
 from app.db.models import File, FileStatus, Job, JobStatus, Variant
 from app.db.session import sync_session
 from app.processors.config import parse_config
+from app.processors.document import process_document
 from app.processors.errors import PermanentError
 from app.processors.image import process_image
 from app.processors.types import ProcessingResult, ProcessorInput, ProgressCallback
@@ -33,7 +34,7 @@ log = get_logger(__name__)
 DOWNLOAD_END, PROCESS_END, UPLOAD_END = 5, 90, 99
 
 Processor = Callable[[ProcessorInput, Any, ProgressCallback], ProcessingResult]
-PROCESSORS: dict[str, Processor] = {"image": process_image}
+PROCESSORS: dict[str, Processor] = {"image": process_image, "document": process_document}
 
 
 class RetryRequested(Exception):
