@@ -39,6 +39,7 @@ def _settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]
         monkeypatch.setenv(k, v)
     _clear_caches()
 
+    from app.db import models  # noqa: F401  (registers tables on Base.metadata)
     from app.db.base import Base
     from app.db.session import get_sync_engine
 

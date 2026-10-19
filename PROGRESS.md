@@ -8,7 +8,7 @@ Spec: see the project brief. Work milestone by milestone; commit after each.
 - [x] 3. Uploads
 - [x] 4. Image processing
 - [x] 5. Documents
-- [ ] 6. Video
+- [x] 6. Video
 - [ ] 7. Progress & webhooks
 - [ ] 8. Downloads & maintenance
 - [ ] 9. Polish

@@ -26,6 +26,7 @@ from app.processors.document import process_document
 from app.processors.errors import PermanentError
 from app.processors.image import process_image
 from app.processors.types import ProcessingResult, ProcessorInput, ProgressCallback
+from app.processors.video import process_video
 from app.services.storage import Storage, TransientStorageError
 
 log = get_logger(__name__)
@@ -34,7 +35,11 @@ log = get_logger(__name__)
 DOWNLOAD_END, PROCESS_END, UPLOAD_END = 5, 90, 99
 
 Processor = Callable[[ProcessorInput, Any, ProgressCallback], ProcessingResult]
-PROCESSORS: dict[str, Processor] = {"image": process_image, "document": process_document}
+PROCESSORS: dict[str, Processor] = {
+    "image": process_image,
+    "document": process_document,
+    "video": process_video,
+}
 
 
 class RetryRequested(Exception):
