@@ -27,7 +27,7 @@ from app.processors.errors import PermanentError
 from app.processors.image import process_image
 from app.processors.types import ProcessingResult, ProcessorInput, ProgressCallback
 from app.processors.video import process_video
-from app.services.storage import Storage, TransientStorageError
+from app.services.storage import Storage, StorageError, TransientStorageError
 
 log = get_logger(__name__)
 
@@ -228,6 +228,8 @@ def run_job(job_id: uuid.UUID, storage: Storage, settings: Settings) -> FileEven
         return _finish(job_id, f"Gave up after {attempt} attempts: {exc}")
     except PermanentError as exc:
         return _finish(job_id, str(exc))
+    except StorageError as exc:  # permanent storage problem: missing object, access denied
+        return _finish(job_id, f"Storage error: {exc}")
     except Exception as exc:
         log.exception("job %s failed unexpectedly", job_id)
         return _finish(job_id, f"Unexpected processing error ({type(exc).__name__}).")

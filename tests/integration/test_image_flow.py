@@ -212,3 +212,21 @@ def test_file_deleted_mid_flight_is_handled(
     with sync_session() as s:
         assert s.get(Job, job.id) is None  # cascaded with the file
         assert s.scalar(select(func.count()).select_from(Variant)) == 0
+
+
+def test_missing_original_fails_permanently_with_clear_error(tenant: Tenant, s3: Any) -> None:
+    file_id = upload_file(tenant, "p.jpg", "image/jpeg", image_bytes("JPEG"), complete=False)
+    key = f"projects/{tenant.project_id}/files/{file_id}/original.jpg"
+    assert tenant.post(f"/v1/uploads/{file_id}/complete").status_code == 200
+    job = job_of(file_id)
+    with sync_session() as s:
+        j = s.get(Job, job.id)
+        assert j is not None
+        j.status = JobStatus.QUEUED
+    s3.delete_object(Bucket=BUCKET, Key=key)
+    from app.core.config import get_settings
+
+    run_job(job.id, get_storage(), get_settings())
+    after = job_of(file_id)
+    assert after.status == JobStatus.FAILED and after.attempts == 2  # no retry loop
+    assert after.error and after.error.startswith("Storage error: Object not found")

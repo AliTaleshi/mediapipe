@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy import select
 
 from app.api.deps import Auth, Session
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError, NotFoundError, error_docs
 from app.db.base import utcnow
 from app.db.models import ApiKey
 from app.services.auth import count_active_keys, create_api_key
@@ -34,7 +34,7 @@ class ApiKeyCreated(ApiKeyOut):
     api_key: str = Field(description="Full API key. Shown once; store it securely.")
 
 
-@router.get("", response_model=list[ApiKeyOut], summary="List API keys")
+@router.get("", response_model=list[ApiKeyOut], summary="List API keys", responses=error_docs(401))
 async def list_keys(auth: Auth, session: Session) -> list[ApiKey]:
     rows = await session.scalars(
         select(ApiKey).where(ApiKey.project_id == auth.project_id).order_by(ApiKey.created_at)
@@ -42,8 +42,15 @@ async def list_keys(auth: Auth, session: Session) -> list[ApiKey]:
     return list(rows)
 
 
-@router.post("", response_model=ApiKeyCreated, status_code=201, summary="Create API key")
+@router.post(
+    "",
+    response_model=ApiKeyCreated,
+    status_code=201,
+    summary="Create API key",
+    responses=error_docs(401),
+)
 async def create_key(body: ApiKeyCreate, auth: Auth, session: Session) -> ApiKeyCreated:
+    """Creates an additional key for rotation. The full key is returned once."""
     key, full = await create_api_key(session, auth.project_id, body.name)
     await session.commit()
     return ApiKeyCreated.model_validate(
@@ -51,7 +58,12 @@ async def create_key(body: ApiKeyCreate, auth: Auth, session: Session) -> ApiKey
     )
 
 
-@router.delete("/{key_id}", status_code=204, summary="Revoke API key")
+@router.delete(
+    "/{key_id}",
+    status_code=204,
+    summary="Revoke API key",
+    responses=error_docs(401, 404, 409),
+)
 async def revoke_key(key_id: uuid.UUID, auth: Auth, session: Session) -> None:
     """Revokes a key immediately. The last active key of a project cannot be revoked."""
     key = await session.scalar(
