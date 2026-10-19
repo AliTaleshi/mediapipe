@@ -5,7 +5,6 @@ variants are keyed by (file, name) and written to deterministic storage keys, so
 run overwrites instead of duplicating.
 """
 
-import random
 import tempfile
 import time
 import uuid
@@ -16,6 +15,7 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
+from app.core.backoff import backoff_delay
 from app.core.config import Settings
 from app.core.logging import get_logger
 from app.db.base import utcnow
@@ -34,6 +34,7 @@ log = get_logger(__name__)
 # Overall progress budget: download 0-5, processing 5-90, upload 90-99, done 100.
 DOWNLOAD_END, PROCESS_END, UPLOAD_END = 5, 90, 99
 
+FileEvent = tuple[str, uuid.UUID]  # (webhook event name, file id)
 Processor = Callable[[ProcessorInput, Any, ProgressCallback], ProcessingResult]
 PROCESSORS: dict[str, Processor] = {
     "image": process_image,
@@ -48,14 +49,6 @@ class RetryRequested(Exception):
     def __init__(self, countdown: float, reason: str) -> None:
         super().__init__(reason)
         self.countdown = countdown
-
-
-def backoff_delay(
-    attempt: int, base: float, cap: float, rand: Callable[[], float] = random.random
-) -> float:
-    """Exponential backoff with jitter: between half and the full exponential delay."""
-    exp = min(cap, base * 2 ** max(attempt - 1, 0))
-    return float(exp / 2 + rand() * exp / 2)
 
 
 def variant_key(file: File, name: str) -> str:
@@ -123,7 +116,7 @@ def _begin(job_id: uuid.UUID) -> tuple[uuid.UUID, dict[str, Any], str, str, int]
         return file.id, job.config, job.type, file.content_type, job.attempts
 
 
-def _finish(job_id: uuid.UUID, error: str | None) -> str | None:
+def _finish(job_id: uuid.UUID, error: str | None) -> FileEvent | None:
     """Records the terminal state. Returns the webhook event to emit, if any."""
     with sync_session() as s:
         job = s.get(Job, job_id)
@@ -138,7 +131,8 @@ def _finish(job_id: uuid.UUID, error: str | None) -> str | None:
         if file is None:
             return None
         s.refresh(file, ["jobs"])
-        return refresh_file_status(file)
+        event = refresh_file_status(file)
+        return (event, file.id) if event else None
 
 
 def _store_results(
@@ -201,8 +195,8 @@ def _process(
     return True
 
 
-def run_job(job_id: uuid.UUID, storage: Storage, settings: Settings) -> str | None:
-    """Runs a job once. Returns a webhook event name when the file reached a terminal state.
+def run_job(job_id: uuid.UUID, storage: Storage, settings: Settings) -> FileEvent | None:
+    """Runs a job once. Returns (webhook event, file id) when the file reached a terminal state.
 
     Raises ``RetryRequested`` for transient failures while attempts remain.
     """

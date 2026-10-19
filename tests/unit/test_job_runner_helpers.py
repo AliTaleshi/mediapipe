@@ -1,7 +1,7 @@
 from typing import Any, cast
 
+from app.core.backoff import backoff_delay
 from app.db.models import File, FileStatus, JobStatus
-from app.services.job_runner import backoff_delay
 from app.services.job_runner import refresh_file_status as _refresh
 
 

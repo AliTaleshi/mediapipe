@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.services.job_runner import RetryRequested, run_job
 from app.services.storage import get_storage
 from app.workers.celery_app import celery_app
+from app.workers.webhook_tasks import dispatch_webhooks
 
 # Attempt counting lives in the database (jobs.attempts), so Celery's own retry limit is off.
 TASK_OPTIONS: dict[str, Any] = {"bind": True, "max_retries": None}
@@ -18,7 +19,10 @@ def _run(task: Task[Any, Any], job_id: str) -> None:
     settings, storage = get_settings(), get_storage()
     while True:
         try:
-            run_job(uuid.UUID(job_id), storage, settings)
+            outcome = run_job(uuid.UUID(job_id), storage, settings)
+            if outcome is not None:
+                event, file_id = outcome
+                dispatch_webhooks.apply_async(args=(str(file_id), event), queue="webhooks")
             return
         except RetryRequested as retry:
             if task.request.is_eager:

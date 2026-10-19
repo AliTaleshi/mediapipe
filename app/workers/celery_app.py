@@ -30,5 +30,5 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
     timezone="UTC",
     enable_utc=True,
-    include=["app.workers.tasks"],
+    include=["app.workers.tasks", "app.workers.webhook_tasks"],
 )
