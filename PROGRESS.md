@@ -10,7 +10,7 @@ Spec: see the project brief. Work milestone by milestone; commit after each.
 - [x] 5. Documents
 - [x] 6. Video
 - [x] 7. Progress & webhooks
-- [ ] 8. Downloads & maintenance
+- [x] 8. Downloads & maintenance
 - [ ] 9. Polish
 
 ## Dev notes

@@ -1,4 +1,5 @@
 from celery import Celery
+from celery.schedules import crontab
 
 from app.core.config import get_settings
 from app.core.logging import setup_logging
@@ -30,5 +31,15 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
     timezone="UTC",
     enable_utc=True,
-    include=["app.workers.tasks", "app.workers.webhook_tasks"],
+    include=[
+        "app.workers.tasks",
+        "app.workers.webhook_tasks",
+        "app.workers.maintenance_tasks",
+    ],
+    beat_schedule={
+        "cleanup-abandoned-uploads": {
+            "task": "mediapipe.cleanup_abandoned_uploads",
+            "schedule": crontab(minute=17),  # hourly
+        },
+    },
 )
