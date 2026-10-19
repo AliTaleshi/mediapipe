@@ -1,0 +1,33 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: mediapipe
+          POSTGRES_PASSWORD: mediapipe
+          POSTGRES_DB: mediapipe
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U mediapipe" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - run: mypy app tests
+      - run: pytest --cov=app.services --cov=app.processors --cov-report=term-missing --cov-fail-under=80
+      - name: Migrations apply cleanly on PostgreSQL
+        run: alembic upgrade head && alembic downgrade base
+        env:
+          DATABASE_URL: postgresql+asyncpg://mediapipe:mediapipe@localhost:5432/mediapipe
