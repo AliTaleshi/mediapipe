@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import admin, api_keys, health, uploads
+from app.api import admin, api_keys, files, health, jobs, uploads
 from app.core.config import get_settings
 from app.core.errors import ErrorResponse, register_exception_handlers
 from app.core.logging import setup_logging
@@ -41,6 +41,8 @@ def create_app() -> FastAPI:
     app.include_router(admin.router)
     app.include_router(api_keys.router)
     app.include_router(uploads.router)
+    app.include_router(files.router)
+    app.include_router(jobs.router)
     return app
 
 

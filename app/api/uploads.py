@@ -1,12 +1,12 @@
 import asyncio
 import uuid
-from typing import Annotated, Any
+from typing import Annotated
 
 from fastapi import APIRouter, Body, Depends
 
 from app.api.deps import Auth, Session
 from app.core.config import Settings, get_settings
-from app.core.errors import ErrorResponse
+from app.core.errors import error_docs
 from app.schemas.uploads import UploadComplete, UploadCompleted, UploadCreate, UploadCreated
 from app.services import uploads as svc
 from app.services.files import get_owned_file, to_file_out
@@ -15,18 +15,13 @@ from app.services.storage import Storage, get_storage
 
 router = APIRouter(prefix="/v1/uploads", tags=["uploads"])
 
-ERRORS: dict[int | str, dict[str, Any]] = {
-    401: {"model": ErrorResponse, "description": "Missing or invalid API key"},
-    422: {"model": ErrorResponse, "description": "Validation failed"},
-}
-
 
 @router.post(
     "",
     response_model=UploadCreated,
     status_code=201,
     summary="Create an upload",
-    responses={**ERRORS, 413: {"model": ErrorResponse, "description": "File too large"}},
+    responses=error_docs(401, 413, 422),
 )
 async def create_upload(
     body: Annotated[
@@ -59,11 +54,7 @@ async def create_upload(
     "/{file_id}/complete",
     response_model=UploadCompleted,
     summary="Confirm an upload and start processing",
-    responses={
-        **ERRORS,
-        404: {"model": ErrorResponse, "description": "File not found"},
-        409: {"model": ErrorResponse, "description": "Nothing uploaded yet"},
-    },
+    responses=error_docs(401, 404, 409, 422),
 )
 async def complete_upload(
     file_id: uuid.UUID,

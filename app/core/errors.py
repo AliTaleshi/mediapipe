@@ -78,6 +78,22 @@ class RateLimitedError(AppError):
     code = "rate_limited"
 
 
+_DOC_DESCRIPTIONS = {
+    400: "Bad request",
+    401: "Missing or invalid API key",
+    404: "Not found",
+    409: "Conflict with the current state",
+    413: "File too large",
+    422: "Validation failed",
+    429: "Rate limit exceeded",
+}
+
+
+def error_docs(*codes: int) -> dict[int | str, dict[str, Any]]:
+    """OpenAPI ``responses`` entries describing the standard error body for these codes."""
+    return {c: {"model": ErrorResponse, "description": _DOC_DESCRIPTIONS[c]} for c in codes}
+
+
 def error_response(
     status_code: int,
     code: str,

@@ -47,6 +47,14 @@ def _settings(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]
     _clear_caches()
 
 
+@pytest.fixture(autouse=True)
+def _celery_eager() -> None:
+    from app.workers.celery_app import celery_app
+
+    celery_app.conf.task_always_eager = True
+    celery_app.conf.task_eager_propagates = True
+
+
 def _clear_caches() -> None:
     from app.core.config import get_settings
     from app.db.session import reset_db_caches
