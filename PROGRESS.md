@@ -4,7 +4,7 @@ Spec: see the project brief. Work milestone by milestone; commit after each.
 
 ## Status
 - [x] 1. Foundation
-- [ ] 2. Auth
+- [x] 2. Auth
 - [ ] 3. Uploads
 - [ ] 4. Image processing
 - [ ] 5. Documents

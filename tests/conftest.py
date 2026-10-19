@@ -3,8 +3,10 @@
 import os
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import fakeredis
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
@@ -93,3 +95,44 @@ def admin_headers() -> dict[str, str]:
 
 def pytest_configure(config: pytest.Config) -> None:
     os.environ.setdefault("AWS_EC2_METADATA_DISABLED", "true")
+
+
+class Tenant:
+    """A project with its API key, for driving the API in tests."""
+
+    def __init__(self, client: TestClient, project_id: str, api_key: str) -> None:
+        self.client = client
+        self.project_id = project_id
+        self.api_key = api_key
+        self.headers = {"Authorization": f"Bearer {api_key}"}
+
+    def request(self, method: str, url: str, **kwargs: Any) -> httpx.Response:
+        resp: httpx.Response = self.client.request(method, url, headers=self.headers, **kwargs)
+        return resp
+
+    def get(self, url: str, **kw: Any) -> httpx.Response:
+        return self.request("GET", url, **kw)
+
+    def post(self, url: str, **kw: Any) -> httpx.Response:
+        return self.request("POST", url, **kw)
+
+    def delete(self, url: str, **kw: Any) -> httpx.Response:
+        return self.request("DELETE", url, **kw)
+
+
+def _new_tenant(client: TestClient, name: str) -> Tenant:
+    resp = client.post(
+        "/v1/admin/projects", json={"name": name}, headers={"X-Admin-Token": ADMIN_TOKEN}
+    )
+    assert resp.status_code == 201, resp.text
+    return Tenant(client, resp.json()["id"], resp.json()["api_key"])
+
+
+@pytest.fixture
+def tenant(client: TestClient) -> Tenant:
+    return _new_tenant(client, "Project A")
+
+
+@pytest.fixture
+def other_tenant(client: TestClient) -> Tenant:
+    return _new_tenant(client, "Project B")

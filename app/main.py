@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import health
+from app.api import admin, api_keys, health
 from app.core.config import get_settings
 from app.core.errors import ErrorResponse, register_exception_handlers
 from app.core.logging import setup_logging
@@ -38,6 +38,8 @@ def create_app() -> FastAPI:
     )
     register_exception_handlers(app)
     app.include_router(health.router)
+    app.include_router(admin.router)
+    app.include_router(api_keys.router)
     return app
 
 
